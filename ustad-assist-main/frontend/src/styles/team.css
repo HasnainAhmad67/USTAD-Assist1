@@ -1,0 +1,7 @@
+/* Three female portraits are provided in one horizontal image sprite. */
+.team-avatar-sprite {
+  display: block;
+  background-repeat: no-repeat;
+  background-size: 300% auto;
+  background-position-y: center;
+}
