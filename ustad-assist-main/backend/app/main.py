@@ -16,16 +16,14 @@ from app.schemas import HealthResponse
 from config.settings import get_settings
 from engine.kb_loader import get_knowledge_base
 
+
 settings = get_settings()
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """
-    Load and normalize the knowledge base once, at process start — not
-    per-request. Failing fast here (rather than on the first API call) is
-    intentional: a missing or malformed dataset should surface immediately
-    when the backend starts, not silently on a user's first request.
+    Load and normalize the knowledge base once, at process start.
     """
     get_knowledge_base()
     yield
@@ -43,13 +41,23 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+
 app.add_middleware(
     CORSMiddleware,
+
+    # Keep any exact origins configured in the backend environment.
     allow_origins=settings.cors_origins_list,
+
+    # This allows Vercel production, preview, and branch deployment URLs.
+    allow_origin_regex=(
+        r"^https://[a-zA-Z0-9][a-zA-Z0-9.-]*\.vercel\.app$"
+     ),
+
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 app.include_router(catalog.router)
 app.include_router(troubleshoot.router)
@@ -58,9 +66,10 @@ app.include_router(vision.router)
 
 @app.get("/health", response_model=HealthResponse, tags=["system"])
 def health() -> HealthResponse:
-    """Basic liveness check plus a sanity check that the KB loaded correctly."""
+    """Basic liveness check plus a knowledge-base sanity check."""
     kb = get_knowledge_base()
     stats = kb.stats()
+
     return HealthResponse(
         status="ok",
         environment=get_settings().environment,
